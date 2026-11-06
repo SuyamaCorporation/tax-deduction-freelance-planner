@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>フリーランス経費控除最適化プランナー</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-white min-h-screen">
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <h1 class="text-2xl font-bold text-center text-orange-400 mb-1">📊 フリーランス節税プランナー</h1>
+  <p class="text-center text-gray-400 text-sm mb-6">白色/青色申告比較と推定節税額を計算</p>
+
+  <!-- Income Input -->
+  <div class="bg-gray-800 rounded-xl p-4 mb-4">
+    <label class="block text-sm font-semibold text-gray-300 mb-2" for="income">年収（売上）</label>
+    <div class="flex items-center gap-2">
+      <input type="number" id="income" placeholder="5000000" min="0" max="100000000" step="10000"
+        class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-orange-400"
+        oninput="calculate()" aria-label="年収入力">
+      <span class="text-gray-400 text-sm">円</span>
+    </div>
+  </div>
+
+  <!-- Expense Items -->
+  <div class="bg-gray-800 rounded-xl p-4 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-sm font-semibold text-gray-300">経費項目</h2>
+      <button onclick="addExpenseRow()" class="px-3 py-1 bg-orange-600 hover:bg-orange-500 rounded text-xs" aria-label="経費を追加">＋ 追加</button>
+    </div>
+    <div id="expense-rows" class="space-y-2"></div>
+    <div class="mt-3 flex justify-between text-sm">
+      <span class="text-gray-400">経費合計</span>
+      <span id="total-expense" class="text-orange-400 font-bold">0円</span>
+    </div>
+  </div>
+
+  <!-- Home Office Simulator -->
+  <div class="bg-gray-800 rounded-xl p-4 mb-4">
+    <h2 class="text-sm font-semibold text-gray-300 mb-3">🏠 家事按分シミュレーター</h2>
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs text-gray-400 mb-1 block" for="rent">月家賃（円）</label>
+        <input type="number" id="rent" placeholder="100000" min="0" oninput="calculateHojun()"
+          class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
+          aria-label="月家賃">
+      </div>
+      <div>
+        <label class="text-xs text-gray-400 mb-1 block" for="utilities">月光熱費（円）</label>
+        <input type="number" id="utilities" placeholder="15000" min="0" oninput="calculateHojun()"
+          class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
+          aria-label="月光熱費">
+      </div>
+    </div>
+    <label class="text-xs text-gray-400 block mb-1">仕事スペース割合: <span id="ratio-val" class="text-orange-400 font-bold">30</span>%</label>
+    <input type="range" id="hojun-ratio" min="5" max="80" value="30" step="5" oninput="calculateHojun()"
+      class="w-full accent-orange-400" aria-label="仕事スペース割合スライダー">
+    <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
+      <div class="bg-gray-700 rounded p-2 text-center">
+        <div class="text-xs text-gray-400">年間家賃按分</div>
+        <div id="rent-deduction" class="text-orange-400 font-bold">0円</div>
+      </div>
+      <div class="bg-gray-700 rounded p-2 text-center">
+        <div class="text-xs text-gray-400">年間光熱費按分</div>
+        <div id="util-deduction" class="text-orange-400 font-bold">0円</div>
+      </div>
+    </div>
+    <button onclick="applyHojun()" class="mt-3 w-full py-1.5 bg-gray-600 hover:bg-gray-500 rounded text-xs" aria-label="経費に追加する">経費に追加する</button>
+  </div>
+
+  <!-- Results -->
+  <div class="bg-gray-800 rounded-xl p-4 mb-4">
+    <h2 class="text-sm font-semibold text-gray-300 mb-3">📈 試算結果</h2>
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div class="bg-blue-900 rounded-lg p-3 text-center">
+        <div class="text-xs text-blue-300 mb-1">青色申告（65万控除）</div>
+        <div id="ao-taxable" class="text-blue-200 font-bold text-lg">—</div>
+        <div class="text-xs text-blue-300">課税所得</div>
+        <div id="ao-tax" class="text-yellow-400 font-bold text-sm mt-1">所得税: —</div>
+      </div>
+      <div class="bg-gray-700 rounded-lg p-3 text-center">
+        <div class="text-xs text-gray-300 mb-1">白色申告</div>
+        <div id="shiro-taxable" class="text-gray-200 font-bold text-lg">—</div>
+        <div class="text-xs text-gray-300">課税所得</div>
+        <div id="shiro-tax" class="text-yellow-400 font-bold text-sm mt-1">所得税: —</div>
+      </div>
+    </div>
+    <div class="bg-green-900 rounded-lg p-3 text-center">
+      <div class="text-xs text-green-300">青色申告による推定節税額</div>
+      <div id="tax-diff" class="text-green-400 font-bold text-2xl">—</div>
+    </div>
+  </div>
+
+  <div class="bg-yellow-900 border border-yellow-600 rounded-lg p-3 text-xs text-yellow-200">
+    ⚠️ 本ツールは概算です。実際の納税額は個人の状況により異なります。正確な計算は税理士にご相談ください。
+  </div>
+</div>
+
+<script>
+const CATEGORIES = ['通信費','交通費','書籍代','機材・備品','家賃按分','外注費','接待交際費','その他'];
+let expenseRows = JSON.parse(localStorage.getItem('freelance-expenses') || '[]');
+
+function formatYen(n) {
+  return Math.round(n).toLocaleString() + '円';
+}
+
+function calcIncomeTax(taxable) {
+  if (taxable <= 0) return 0;
+  const brackets = [
+    {limit: 1950000, rate: 0.05, deduct: 0},
+    {limit: 3300000, rate: 0.10, deduct: 97500},
+    {limit: 6950000, rate: 0.20, deduct: 427500},
+    {limit: 9000000, rate: 0.23, deduct: 636000},
+    {limit: 18000000, rate: 0.33, deduct: 1536000},
+    {limit: 40000000, rate: 0.40, deduct: 2796000},
+    {limit: Infinity, rate: 0.45, deduct: 4796000},
+  ];
+  for (const b of brackets) {
+    if (taxable <= b.limit) return taxable * b.rate - b.deduct;
+  }
+  return 0;
+}
+
+function getTotalExpenses() {
+  return expenseRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+}
+
+function calculate() {
+  const income = parseFloat(document.getElementById('income').value) || 0;
+  const totalExp = getTotalExpenses();
+  document.getElementById('total-expense').textContent = formatYen(totalExp);
+
+  const basicDeduction = 480000; // 基礎控除
+  const aoDeduction = 650000; // 青色申告控除
+
+  const shiroTaxable = Math.max(0, income - totalExp - basicDeduction);
+  const aoTaxable = Math.max(0, income - totalExp - aoDeduction - basicDeduction);
+
+  const shiroTax = calcIncomeTax(shiroTaxable);
+  const aoTax = calcIncomeTax(aoTaxable);
+
+  document.getElementById('shiro-taxable').textContent = formatYen(shiroTaxable);
+  document.getElementById('shiro-tax').textContent = '所得税: ' + formatYen(shiroTax);
+  document.getElementById('ao-taxable').textContent = formatYen(aoTaxable);
+  document.getElementById('ao-tax').textContent = '所得税: ' + formatYen(aoTax);
+  document.getElementById('tax-diff').textContent = formatYen(Math.max(0, shiroTax - aoTax));
+
+  localStorage.setItem('freelance-expenses', JSON.stringify(expenseRows));
+}
+
+function renderExpenseRows() {
+  const container = document.getElementById('expense-rows');
+  while (container.firstChild) container.removeChild(container.firstChild);
+  if (expenseRows.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'text-xs text-gray-500 text-center py-2';
+    p.textContent = '「＋ 追加」ボタンで経費を追加';
+    container.appendChild(p);
+    return;
+  }
+  expenseRows.forEach((row, i) => {
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-center';
+
+    const sel = document.createElement('select');
+    sel.className = 'flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400';
+    sel.setAttribute('aria-label', 'カテゴリ選択');
+    CATEGORIES.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat;
+      if (cat === row.category) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = () => { expenseRows[i].category = sel.value; calculate(); };
+
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.min = '0';
+    inp.placeholder = '金額';
+    inp.value = row.amount;
+    inp.className = 'w-28 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400';
+    inp.setAttribute('aria-label', '金額入力');
+    inp.oninput = () => { expenseRows[i].amount = inp.value; calculate(); };
+
+    const unit = document.createElement('span');
+    unit.className = 'text-gray-400 text-xs';
+    unit.textContent = '円';
+
+    const btn = document.createElement('button');
+    btn.className = 'text-red-400 hover:text-red-300 text-xs px-1';
+    btn.textContent = '✕';
+    btn.setAttribute('aria-label', '削除');
+    btn.onclick = () => { expenseRows.splice(i, 1); renderExpenseRows(); calculate(); };
+
+    div.appendChild(sel);
+    div.appendChild(inp);
+    div.appendChild(unit);
+    div.appendChild(btn);
+    container.appendChild(div);
+  });
+}
+
+function addExpenseRow() {
+  expenseRows.push({category: '通信費', amount: ''});
+  renderExpenseRows();
+}
+
+function calculateHojun() {
+  const ratio = parseInt(document.getElementById('hojun-ratio').value);
+  document.getElementById('ratio-val').textContent = ratio;
+  const rent = parseFloat(document.getElementById('rent').value) || 0;
+  const util = parseFloat(document.getElementById('utilities').value) || 0;
+  document.getElementById('rent-deduction').textContent = formatYen(rent * 12 * ratio / 100);
+  document.getElementById('util-deduction').textContent = formatYen(util * 12 * ratio / 100);
+}
+
+function applyHojun() {
+  const ratio = parseInt(document.getElementById('hojun-ratio').value);
+  const rent = parseFloat(document.getElementById('rent').value) || 0;
+  const util = parseFloat(document.getElementById('utilities').value) || 0;
+  const rentAmt = Math.round(rent * 12 * ratio / 100);
+  const utilAmt = Math.round(util * 12 * ratio / 100);
+  if (rentAmt > 0) expenseRows.push({category: '家賃按分', amount: rentAmt});
+  if (utilAmt > 0) expenseRows.push({category: 'その他', amount: utilAmt});
+  renderExpenseRows();
+  calculate();
+}
+
+renderExpenseRows();
+calculateHojun();
+calculate();
+</script>
+</body>
+</html>
